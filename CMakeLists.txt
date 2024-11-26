@@ -12,4 +12,4 @@ else()
 
     endif()
     
-add_executable(txtit src/txtit.cpp src/platform_win32.cpp)
+add_executable(txtit src/txtit.cpp src/editor.cpp src/platform_win32.cpp src/platform_posix.cpp)
