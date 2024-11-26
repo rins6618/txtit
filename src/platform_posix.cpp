@@ -74,7 +74,7 @@ void ConsoleInput::writeToStdout(const char* msg, int bytes) {
 }
 
 void ConsoleInput::clearScreen() {
-    ConsoleInput::writeToStdout("\x1b[2j", 4);
+    ConsoleInput::writeToStdout("\x1b[2J", 4);
     ConsoleInput::writeToStdout("\x1b[H", 3);
 }
 
