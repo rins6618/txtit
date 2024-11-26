@@ -70,13 +70,15 @@ void ConsoleInput::setRawMode() {
     if (!SetConsoleMode(stdinHandle, mode)) {
         throw std::runtime_error("Console Not Set");
     }
-
-    atexit(ConsoleInput::resetCanonicalMode);
-
+    
+    isRaw = true;
 }
 
 // Only use after setting raw mode
 void ConsoleInput::resetCanonicalMode() {
+
+    if (!isRaw) return;
+
     stdinHandle = GetStdHandle(STD_INPUT_HANDLE);
     if (stdinHandle == INVALID_HANDLE_VALUE) {
         throw std::runtime_error("Invalid Handle Value");
@@ -85,6 +87,8 @@ void ConsoleInput::resetCanonicalMode() {
     if (!SetConsoleMode(stdinHandle, mode)) {
         throw std::runtime_error("Console Not Reset :( ");
     }
+
+    isRaw = false;
 
 }
 
