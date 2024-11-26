@@ -10,7 +10,7 @@ class Editor {
 public:
     Editor(ConsoleInput& _ci_instance);
     ~Editor();
-
+    void rowIndicators();
     void editorLoop();
     void processKey();
     char readKey();

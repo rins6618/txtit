@@ -17,14 +17,21 @@ class ConsoleInput {
     
 public:
 
+    ConsoleInput();
+    ~ConsoleInput();
+
     char get();
     char get(char& out);
 
-    ConsoleInput();
-    ~ConsoleInput();
+    void writeToStdout(const char* msg, int bytes);
+    void clearScreen();
+    void resetCursor();
+
     static void reset();
 
     static bool isInitialized();
+    
+
 
 };
 

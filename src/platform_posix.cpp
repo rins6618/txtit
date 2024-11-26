@@ -69,6 +69,19 @@ char ConsoleInput::get(char& out) {
     return out;
 }
 
+void ConsoleInput::writeToStdout(const char* msg, int bytes) {
+    write(STDOUT_FILENO, msg, bytes);
+}
+
+void ConsoleInput::clearScreen() {
+    ConsoleInput::writeToStdout("\x1b[2j", 4);
+    ConsoleInput::writeToStdout("\x1b[H", 3);
+}
+
+void ConsoleInput::resetCursor() {
+    writeToStdout("\x1b[H", 3);
+}
+
 bool ConsoleInput::isInitialized() { return isRaw; }
 
 

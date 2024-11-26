@@ -7,7 +7,8 @@
 extern "C" void reset() { ConsoleInput::reset(); }
 
 DWORD mode;
-HANDLE stdinHandle;
+HANDLE stdinHandle = INVALID_HANDLE_VALUE;
+HANDLE stdoutHandle = INVALID_HANDLE_VALUE;
 
 bool ConsoleInput::isRaw = false;
 
@@ -93,6 +94,7 @@ void ConsoleInput::resetCanonicalMode() {
 
 }
 
+
 char ConsoleInput::get() {
     return getWinKey()->character;
 }
@@ -102,6 +104,63 @@ char ConsoleInput::get(char& out) {
     return out;
 }
 
-bool ConsoleInput::isInitialized() {return isRaw; }
+// Windows does not support ANSI by default everywhere!!!!
+// Using FillConsoleOutputCharacter is not recommended, but since
+// some terminals are not xterm compatible,
+// this is the way to do.
+
+// If all Windows terminals were xterm compatible,
+// It'd be as easy as typing:
+/*
+    WriteConsole(stdoutHandle, "\x1b[2J", 4);
+    SetConsoleCursorPosition(stdinHandle, coordScreen);
+*/
+
+void ConsoleInput::writeToStdout(const char* msg, size_t bytes) {
+    if (stdoutHandle == INVALID_HANDLE_VALUE) {
+        stdoutHandle = GetStdHandle(STD_OUTPUT_HANDLE);
+        if (stdoutHandle == INVALID_HANDLE_VALUE) {
+            throw std::runtime_error("ConsoleInput::writeToStdout: GetStdHandle");
+        }
+    }
+    WriteConsole(stdoutHandle, msg, bytes);
+}
+void ConsoleInput::clearScreen() {
+
+    COORD coordScreen = { 0, 0 };
+    DWORD dwCount;
+
+    if (stdoutHandle == INVALID_HANDLE_VALUE) {
+        stdoutHandle = GetStdHandle(STD_OUTPUT_HANDLE);
+        if (stdoutHandle == INVALID_HANDLE_VALUE) {
+            throw std::runtime_error("ConsoleInput::clearScreen: GetStdHandle");
+        }
+    }
+
+    // Indeed.
+    if (FillConsoleOutputCharacter(stdoutHandle, ' ', dwCount, coordScreen, &dwCount) == 0) {
+        throw new std::runtime_error("ConsoleInput::clearScreen: FillConsoleOutputCharacter");
+    }
+
+    if (SetConsoleCursorPosition(stdoutHandle, coordScreen) == 0 ) {
+        throw new std::runtime_error("ConsoleInput::clearScreen: SetConsoleCursorPosition");
+    }
+}
+
+void ConsoleInput::resetCursor() {
+    
+    if (stdoutHandle == INVALID_HANDLE_VALUE) {
+        stdoutHandle = GetStdHandle(STD_OUTPUT_HANDLE);
+        if (stdoutHandle == INVALID_HANDLE_VALUE) {
+            throw std::runtime_error("ConsoleInput::resetCursor: GetStdHandle");
+        }
+    }
+
+    if (SetConsoleCursorPosition(stdoutHandle, coordScreen) == 0 ) {
+        throw new std::runtime_error("ConsoleInput::resetCursor: SetConsoleCursorPosition");
+    }
+}
+
+bool ConsoleInput::isInitialized() { return isRaw; }
 
 #endif
