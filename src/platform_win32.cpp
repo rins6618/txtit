@@ -67,7 +67,8 @@ void ConsoleInput::setRawMode() {
 
     DWORD raw = mode;
 
-    raw &= ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT | ENABLE_PROCESSED_INPUT);
+    raw &= ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT | ENABLE_PROCESSED_INPUT | ENABLE_WRAP_AT_EOL_OUTPUT);
+    raw &= (ENABLE_VIRTUAL_TERMINAL_PROCESSING | DISABLE_NEWLINE_AUTO_RETURN);
 
     if (!SetConsoleMode(stdinHandle, mode)) {
         throw std::runtime_error("ConsoleInput::setRawMode: SetConsoleMode");
@@ -116,14 +117,14 @@ char ConsoleInput::get(char& out) {
     SetConsoleCursorPosition(stdinHandle, coordScreen);
 */
 
-void ConsoleInput::writeToStdout(const char* msg, size_t bytes) {
+void ConsoleInput::writeToStdout(const char* msg, int bytes) {
     if (stdoutHandle == INVALID_HANDLE_VALUE) {
         stdoutHandle = GetStdHandle(STD_OUTPUT_HANDLE);
         if (stdoutHandle == INVALID_HANDLE_VALUE) {
             throw std::runtime_error("ConsoleInput::writeToStdout: GetStdHandle");
         }
     }
-    WriteConsole(stdoutHandle, msg, bytes);
+    WriteConsoleA(stdoutHandle, msg, bytes, nullptr, nullptr);
 }
 void ConsoleInput::clearScreen() {
 
@@ -156,6 +157,7 @@ void ConsoleInput::resetCursor() {
         }
     }
 
+    COORD coordScreen = { 0, 0 };
     if (SetConsoleCursorPosition(stdoutHandle, coordScreen) == 0 ) {
         throw new std::runtime_error("ConsoleInput::resetCursor: SetConsoleCursorPosition");
     }
