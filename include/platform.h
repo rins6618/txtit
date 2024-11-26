@@ -7,9 +7,9 @@
 #include <string>
 #include <cstdlib>
 
+#define CTRL(x) (x & 0x1f)
 
 class ConsoleInput {
-
     static bool isRaw;
 
     static void setRawMode();
@@ -23,6 +23,8 @@ public:
     ConsoleInput();
     ~ConsoleInput();
     static void reset();
+
+    static bool isInitialized();
 
 };
 

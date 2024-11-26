@@ -9,6 +9,7 @@ extern "C" void reset() { ConsoleInput::reset(); }
 DWORD mode;
 HANDLE stdinHandle;
 
+bool ConsoleInput::isRaw = false;
 
 struct KeyEvent {
     bool printable;
@@ -56,11 +57,11 @@ void ConsoleInput::setRawMode() {
     
     stdinHandle = GetStdHandle(STD_INPUT_HANDLE);
     if (stdinHandle == INVALID_HANDLE_VALUE) {
-        throw std::runtime_error("Invalid Handle Value");
+        throw std::runtime_error("ConsoleInput::setRawMode: GetStdHandle");
     }
 
     if (!GetConsoleMode(stdinHandle, &mode)) {
-        throw std::runtime_error("Console Mode Unknown");
+        throw std::runtime_error("ConsoleInput::setRawMode: GetConsoleMode");
     }
 
     DWORD raw = mode;
@@ -68,7 +69,7 @@ void ConsoleInput::setRawMode() {
     raw &= ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT | ENABLE_PROCESSED_INPUT);
 
     if (!SetConsoleMode(stdinHandle, mode)) {
-        throw std::runtime_error("Console Not Set");
+        throw std::runtime_error("ConsoleInput::setRawMode: SetConsoleMode");
     }
     
     isRaw = true;
@@ -81,11 +82,11 @@ void ConsoleInput::resetCanonicalMode() {
 
     stdinHandle = GetStdHandle(STD_INPUT_HANDLE);
     if (stdinHandle == INVALID_HANDLE_VALUE) {
-        throw std::runtime_error("Invalid Handle Value");
+        throw std::runtime_error("ConsoleInput::resetCanonicalMode: GetStdHandle");
     }
 
     if (!SetConsoleMode(stdinHandle, mode)) {
-        throw std::runtime_error("Console Not Reset :( ");
+        throw std::runtime_error("ConsoleInput::resetCanonicalMode: SetConsoleMode");
     }
 
     isRaw = false;
@@ -100,5 +101,7 @@ char ConsoleInput::get(char& out) {
     out = getWinKey()->character;
     return out;
 }
+
+bool ConsoleInput::isInitialized() {return isRaw; }
 
 #endif
