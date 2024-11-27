@@ -227,6 +227,21 @@ void ConsoleInput::resetCursor() {
     }
 }
 
+void ConsoleInput::setCursor(Coords pos) {
+    COORD winPos = {pos.x, pos.y};
+    SetConsoleCursorPosition( GetStdHandle(STD_OUTPUT_HANDLE), winPos);
+}
+
+Coords ConsoleInput::getCursor() {
+    CONSOLE_SCREEN_BUFFER_INFO cbsi;
+    if (GetConsoleScreenBufferInfo( GetStdHandle(STD_OUTPUT_HANDLE), &cbsi))
+    {
+        Coords pos = {cbsi.dwCursorPosition.X, cbsi.dwCursorPosition.Y};
+        return pos;
+    }
+}
+
+
 ConsoleInput::ConsoleState ConsoleInput::getConsoleState() {
     updateConsoleState();
     return consoleState;

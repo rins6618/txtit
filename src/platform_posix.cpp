@@ -3,6 +3,15 @@
 #include <unistd.h>
 #include <termio.h>
 
+/*
+To Implement
+    - void ConsoleInput::updateConsoleState()
+    - void ConsoleInput::setCursor(Coords pos)
+    - Coords ConsoleInput::getCursor()
+    - ConsoleState ConsoleInput::getConsoleState()
+*/
+
+
 bool ConsoleInput::isRaw = false;
 
 ConsoleInput::ConsoleInput() {

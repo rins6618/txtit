@@ -5,6 +5,7 @@
 #include <sstream>
 
 Editor::Editor(ConsoleInput& _ci_instance) : ci_instance(_ci_instance) {
+    ec.cursor = {0, 0};
     if (!ConsoleInput::isInitialized()) {
         throw new std::runtime_error("Console not prepped");
     }
@@ -21,18 +22,20 @@ Editor::~Editor() {
 
 void Editor::rowIndicators() {
     auto cs = ci_instance.getConsoleState();
-    int numLen = ((int) std::to_string(cs.rows).length()) + 1;
+    ec.dimensions.x = cs.cols;
+    ec.dimensions.y = cs.rows;
+    int numLen = ((int) std::to_string(ec.dimensions.x).length()) + 1;
 
 
     std::stringstream outersstr;
-    for (int i = 1; i <= cs.rows; ++i) {
+    for (int i = 1; i <= ec.dimensions.x; ++i) {
         std::stringstream innersstr;
         
-        if (i == cs.rows / 3) {
+        if (i == ec.dimensions.x / 3) {
             std::stringstream splashMsg;
             splashMsg << "txtit -- text editor -- v" << txtit_VERSION_MAJOR << '.' << txtit_VERSION_MINOR;
             std::string splashStr = splashMsg.str();
-            int padding = (cs.cols - splashStr.length()) / 2;
+            int padding = (int) (ec.dimensions.x - splashStr.length()) / 2;
             if (padding) {
                 innersstr << i;
                 int iLen = (int) innersstr.str().length();
@@ -45,7 +48,7 @@ void Editor::rowIndicators() {
             }
             while (padding--) innersstr << " ";
             innersstr << splashStr;
-        } else if (i == cs.rows / 3 + 1) {
+        } else if (i == ec.dimensions.x / 3 + 1) {
             std::stringstream tooltip;
             tooltip << "CTRL+Q to quit";
             std::string tooltipStr = tooltip.str();
@@ -92,7 +95,6 @@ void Editor::processKey() {
     switch (active)
     {
     case CTRL('Q'):
-    case 'Q':
         running = false;
         ci_instance.clearScreen();
         break;

@@ -6,6 +6,7 @@
 #include <optional>
 #include <string>
 #include <cstdlib>
+#include "types.h"
 
 #define CTRL(x) (x & 0x1f)
 
@@ -36,10 +37,11 @@ public:
     char get(char& out);
 
     void writeToStdout(const char* msg, int bytes);
-
-    // Returns a boolean, indicating if the terminal has been resized.
+    
     void clearScreen();
     void resetCursor();
+    void setCursor(Coords pos);
+    Coords getCursor();
 
     ConsoleState getConsoleState();
 
