@@ -28,10 +28,10 @@ void Editor::rowIndicators() {
 
 
     std::stringstream outersstr;
-    for (int i = 1; i <= ec.dimensions.x; ++i) {
+    for (int i = 1; i <= ec.dimensions.y; ++i) {
         std::stringstream innersstr;
         
-        if (i == ec.dimensions.x / 3) {
+        if (i == ec.dimensions.y / 3) {
             std::stringstream splashMsg;
             splashMsg << "txtit -- text editor -- v" << txtit_VERSION_MAJOR << '.' << txtit_VERSION_MINOR;
             std::string splashStr = splashMsg.str();
@@ -48,7 +48,7 @@ void Editor::rowIndicators() {
             }
             while (padding--) innersstr << " ";
             innersstr << splashStr;
-        } else if (i == ec.dimensions.x / 3 + 1) {
+        } else if (i == ec.dimensions.y / 3 + 1) {
             std::stringstream tooltip;
             tooltip << "CTRL+Q to quit";
             std::string tooltipStr = tooltip.str();
@@ -74,7 +74,7 @@ void Editor::rowIndicators() {
             }
             innersstr << "#";
         }
-        if (i < cs.rows) innersstr << "\r\n";
+        if (i < ec.dimensions.y) innersstr << "\r\n";
         outersstr << innersstr.str();
     }
     std::string str = outersstr.str();
