@@ -1,16 +1,18 @@
 #include "platform.h"
 
 #if defined(_WIN32) || defined(_WIN64)
+/* Static definitions */
+bool ConsoleInput::isRaw = false;
+
+/* Windows Specific */
 #define NOMINMAX
 #include <Windows.h>
+void reset() { ConsoleInput::reset(); }
 
-extern "C" void reset() { ConsoleInput::reset(); }
-
-DWORD mode;
+DWORD stdinMode;
+DWORD stdoutMode;
 HANDLE stdinHandle = INVALID_HANDLE_VALUE;
 HANDLE stdoutHandle = INVALID_HANDLE_VALUE;
-
-bool ConsoleInput::isRaw = false;
 
 struct KeyEvent {
     bool printable;
@@ -19,6 +21,7 @@ struct KeyEvent {
     WORD scanCode;
 };
 
+bool resized = false;
 
 std::optional<KeyEvent> getWinKey() {
     INPUT_RECORD ir;
@@ -26,7 +29,12 @@ std::optional<KeyEvent> getWinKey() {
 
     while(true) {
         if (!ReadConsoleInput(stdinHandle, &ir, 1, &event)) {
-            throw new std::runtime_error("Failed to read stdin");
+            throw new std::runtime_error("getWinKey: Failed to read console");
+        }
+
+        if (ir.EventType == WINDOW_BUFFER_SIZE_EVENT) {
+            resized = true;
+            return std::nullopt;
         }
 
         if (ir.EventType == KEY_EVENT) {
@@ -43,35 +51,66 @@ std::optional<KeyEvent> getWinKey() {
     }
 }
 
-ConsoleInput::ConsoleInput() {
-    ConsoleInput::setRawMode();
-    atexit(reset);
+/* Class Implementations */
+/* Private Methods*/
+
+void ConsoleInput::updateConsoleState() {
+    bool resizedCopy = resized;
+    resized = false;
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    GetConsoleScreenBufferInfo( GetStdHandle( STD_OUTPUT_HANDLE ), &csbi);
+    
+    COORD newSize = {
+        csbi.srWindow.Right - csbi.srWindow.Left + 1, // Window width
+        csbi.srWindow.Bottom - csbi.srWindow.Top + 1 // Window height
+    };
+    
+    consoleState = ConsoleState {
+        newSize.X,
+        newSize.Y,
+        resizedCopy
+    };
 }
 
-ConsoleInput::~ConsoleInput() {
-    ConsoleInput::reset();
-}
-
-void ConsoleInput::reset() { ConsoleInput::resetCanonicalMode(); }
+/* Static Private Methods*/
 
 void ConsoleInput::setRawMode() {
     
-    stdinHandle = GetStdHandle(STD_INPUT_HANDLE);
     if (stdinHandle == INVALID_HANDLE_VALUE) {
-        throw std::runtime_error("ConsoleInput::setRawMode: GetStdHandle");
+        stdinHandle = GetStdHandle(STD_INPUT_HANDLE);
+        if (stdinHandle == INVALID_HANDLE_VALUE) {
+            throw std::runtime_error("ConsoleInput::setRawMode: GetStdHandle (stdin)");
+        }
     }
 
-    if (!GetConsoleMode(stdinHandle, &mode)) {
-        throw std::runtime_error("ConsoleInput::setRawMode: GetConsoleMode");
+    if (stdoutHandle == INVALID_HANDLE_VALUE) {
+        stdoutHandle = GetStdHandle(STD_OUTPUT_HANDLE);
+        if (stdoutHandle == INVALID_HANDLE_VALUE) {
+            throw std::runtime_error("ConsoleInput::setRawMode: GetStdHandle (stdout)");
+        }
     }
 
-    DWORD raw = mode;
+    if (!GetConsoleMode(stdinHandle, &stdinMode)) {
+        throw std::runtime_error("ConsoleInput::setRawMode: GetConsoleMode (stdin)");
+    }
 
-    raw &= ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT | ENABLE_PROCESSED_INPUT | ENABLE_WRAP_AT_EOL_OUTPUT);
-    raw &= (ENABLE_VIRTUAL_TERMINAL_PROCESSING | DISABLE_NEWLINE_AUTO_RETURN);
+    if (!GetConsoleMode(stdoutHandle, &stdoutMode)) {
+        throw std::runtime_error("ConsoleInput::setRawMode: GetConsoleMode (stdout)");
+    }
 
-    if (!SetConsoleMode(stdinHandle, mode)) {
-        throw std::runtime_error("ConsoleInput::setRawMode: SetConsoleMode");
+    DWORD rawIn = stdinMode;
+    DWORD rawOut = stdoutMode;
+
+    rawIn &= ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT | ENABLE_PROCESSED_INPUT);
+    rawIn |= ENABLE_WINDOW_INPUT;
+    rawOut &= (ENABLE_PROCESSED_OUTPUT | DISABLE_NEWLINE_AUTO_RETURN);
+
+    if (!SetConsoleMode(stdinHandle, rawIn)) {
+        throw std::runtime_error("ConsoleInput::setRawMode: SetConsoleMode (stdin)");
+    }
+
+    if (!SetConsoleMode(stdoutHandle, rawOut)) {
+        throw std::runtime_error("ConsoleInput::setRawMode: SetConsoleMode (stdout)");
     }
     
     isRaw = true;
@@ -87,7 +126,7 @@ void ConsoleInput::resetCanonicalMode() {
         throw std::runtime_error("ConsoleInput::resetCanonicalMode: GetStdHandle");
     }
 
-    if (!SetConsoleMode(stdinHandle, mode)) {
+    if (!SetConsoleMode(stdinHandle, stdinMode)) {
         throw std::runtime_error("ConsoleInput::resetCanonicalMode: SetConsoleMode");
     }
 
@@ -96,13 +135,44 @@ void ConsoleInput::resetCanonicalMode() {
 }
 
 
+/* Public Methods */
+ConsoleInput::ConsoleInput() {
+    // idk how to clear history buffer so this works
+    ConsoleInput::setRawMode();
+    atexit(reset);
+    updateConsoleState();
+}
+
+ConsoleInput::~ConsoleInput() {
+    ConsoleInput::reset();
+}
+
+
+
 char ConsoleInput::get() {
-    return getWinKey()->character;
+    auto c = getWinKey();
+    if (!c.has_value()) return '\0';
+    return c->character;
 }
 
 char ConsoleInput::get(char& out) {
-    out = getWinKey()->character;
+    auto c = getWinKey();
+    if (!c.has_value()) {
+        out = '\0';
+    } else {
+        out = c->character;
+    }
     return out;
+}
+
+void ConsoleInput::writeToStdout(const char* msg, int bytes) {
+    if (stdoutHandle == INVALID_HANDLE_VALUE) {
+        stdoutHandle = GetStdHandle(STD_OUTPUT_HANDLE);
+        if (stdoutHandle == INVALID_HANDLE_VALUE) {
+            throw std::runtime_error("ConsoleInput::writeToStdout: GetStdHandle");
+        }
+    }
+    WriteConsoleA(stdoutHandle, msg, bytes, nullptr, nullptr);
 }
 
 // Windows does not support ANSI by default everywhere!!!!
@@ -117,17 +187,8 @@ char ConsoleInput::get(char& out) {
     SetConsoleCursorPosition(stdinHandle, coordScreen);
 */
 
-void ConsoleInput::writeToStdout(const char* msg, int bytes) {
-    if (stdoutHandle == INVALID_HANDLE_VALUE) {
-        stdoutHandle = GetStdHandle(STD_OUTPUT_HANDLE);
-        if (stdoutHandle == INVALID_HANDLE_VALUE) {
-            throw std::runtime_error("ConsoleInput::writeToStdout: GetStdHandle");
-        }
-    }
-    WriteConsoleA(stdoutHandle, msg, bytes, nullptr, nullptr);
-}
 void ConsoleInput::clearScreen() {
-
+    
     COORD coordScreen = { 0, 0 };
     DWORD dwCount;
 
@@ -138,11 +199,14 @@ void ConsoleInput::clearScreen() {
         }
     }
 
+    // In case the console is xterm compatible:
+    writeToStdout("\x1b[2J", 4);
+    writeToStdout("\x1b[3J", 4);
+
     // Indeed.
     if (FillConsoleOutputCharacter(stdoutHandle, ' ', dwCount, coordScreen, &dwCount) == 0) {
         throw new std::runtime_error("ConsoleInput::clearScreen: FillConsoleOutputCharacter");
     }
-
     if (SetConsoleCursorPosition(stdoutHandle, coordScreen) == 0 ) {
         throw new std::runtime_error("ConsoleInput::clearScreen: SetConsoleCursorPosition");
     }
@@ -163,6 +227,14 @@ void ConsoleInput::resetCursor() {
     }
 }
 
+ConsoleInput::ConsoleState ConsoleInput::getConsoleState() {
+    updateConsoleState();
+    return consoleState;
+}
+
+
+/* Static Public Methods */
+void ConsoleInput::reset() { ConsoleInput::resetCanonicalMode(); }
 bool ConsoleInput::isInitialized() { return isRaw; }
 
 #endif
