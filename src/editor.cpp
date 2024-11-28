@@ -92,6 +92,32 @@ void Editor::editorLoop() {
 
 void Editor::processKey() {
     char active = ci_instance.get();
+    if (active == '\x1b') {
+        std::string chord;
+        chord.push_back(ci_instance.get());
+        chord.push_back(ci_instance.get());
+
+        if (chord.at(0) == '[') {
+            switch (chord[1]) {
+                case 'A':
+                    ci_instance.setCursor({ec.cursor.x, --ec.cursor.y});
+                    break;
+                case 'B':
+                    ci_instance.setCursor({ec.cursor.x, ++ec.cursor.y});
+                    break;
+                case 'C':
+                    ci_instance.setCursor({++ec.cursor.x, ec.cursor.y});
+                    break;
+                case 'D':
+                    ci_instance.setCursor({--ec.cursor.x, ec.cursor.y});
+                    break;
+                default:
+                    break;
+            }
+        }
+
+    }
+    
     switch (active)
     {
     case CTRL('Q'):
