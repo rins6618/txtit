@@ -1,7 +1,6 @@
 #ifndef PLATFORM__H
 #define PLATFORM__H
 
-
 #include <iostream>
 #include <optional>
 #include <string>
@@ -9,13 +8,29 @@
 #include "types.h"
 
 #define CTRL(x) (x & 0x1f)
+#define UNUSED(x) (void)(x)
+
+enum class EscapeKey {
+    ArrowLeft,
+    ArrowRight,
+    ArrowUp,
+    ArrowDown,
+    None
+};
+
 
 class ConsoleInput {
 public:
+    struct EscapedSequence {
+        bool isSequence;
+        EscapeKey key;
+    };
+
     struct ConsoleState{
         int cols;
         int rows;
         bool resized;
+        EscapedSequence escapeSeq;
     };
 
 private:
@@ -25,6 +40,7 @@ private:
 
     static void setRawMode();
     static void resetCanonicalMode();
+    void getEscapeSequence(char out);
 
     ConsoleState consoleState;
     
